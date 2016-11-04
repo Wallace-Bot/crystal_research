@@ -46,22 +46,33 @@ public class Functions {
 	 */
 	static double spf=.03333333; //for the butterfly only clips from superK
 	
-	//sampling one of two images tho is tha tpart accounted for
+	//However openCV s reading the images, it seems to be sampling at rate of once every two frames
 	
 	public Functions() {
 	}
 	
+	
+	/**
+	 * Finding and drawing out contours on an image
+	 * @param list of contours (created outside function), src image from which
+	 * to find contours, dst image to draw contours on
+	 * @return void
+	 */
 	public static void showContours(ArrayList<MatOfPoint> contours, Mat src, Mat dst){
 		//finding contours
 		Imgproc.findContours(src, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);
 		Imgproc.drawContours(dst, contours, -1, new Scalar(255,255,255),2);
 	}
    
-	//get COM of one contour and draw it
+	/**
+	 * Get the center of mass of a single contour and draw it and bounding rectangle on an image
+	 * @param the one contour you want the COM of, dst image (destination image)
+	 * @return COM point
+	 */	
 	public static Point getCOMofOneContour(MatOfPoint contour, Mat dst){
 
 			Moments mu = Imgproc.moments(contour, false);
-		//mass center
+			//mass center
 			MatOfPoint2f approxCurve = new MatOfPoint2f();
 			Point p = new Point( mu.get_m10() / mu.get_m00() , mu.get_m01()/mu.get_m00() );
      		Core.circle(dst, p, 3, new Scalar(255,255,255), 3); //circle and related in imgproc for 3.0 and core for 2.4
@@ -78,14 +89,20 @@ public class Functions {
      		// Get bounding rect of contour
      		Rect rect = Imgproc.boundingRect(pointMat);
      		
-     		// draw enclosing rectangle (all same color, but you could use variable i to make them unique)
+     		// draw enclosing rectangle (all same color, but can use variable i to make them unique)
      		Core.rectangle(dst, new Point(rect.x,rect.y), new Point(rect.x+rect.width,rect.y+rect.height), new Scalar(255,255,255), 3);
-     		//System.out.println("testing");
      		
      		return p;
 	}
+	
+	/**
+	 * Get the center of mass of largest contour of a list of contours and
+	 * draw all COMS and bounding rectangles on an image
+	 * @param list of contours, dst image (destination image)
+	 * @return COM point of largest contour
+	 */	
 	public static Point COMnRec(ArrayList<MatOfPoint> contours, Mat dst){
-	   //finding mass center of contours
+	    //finding mass center of contours
 		//return mass center of largest contour
 		List<Moments> mu = new ArrayList<Moments>(contours.size());
 		for (int i = 0; i < contours.size(); i++) {
@@ -132,13 +149,17 @@ public class Functions {
 		return mc.get(idxMax);
 	}
 	
-
+	/**
+	 * Get the largest contour of a list of contours and return 
+	 * its index from the list of contours
+	 * @param list of contours
+	 * @return index of largset contour
+	 */	
 	public static int getLargestContour(ArrayList<MatOfPoint> contours){
 		//return index of the largest contour
 		 double maxArea = -1;
 		 int maxAreaIdx = -1;
 		
-		//begin copy 
 		   MatOfPoint temp_contour = contours.get(0); //the largest is at the index 0 for starting point
 		   Mat largest_contour = contours.get(0);	   
 		   for (int i = 0; i < contours.size(); i++) {
@@ -151,37 +172,25 @@ public class Functions {
 		            largest_contour = temp_contour;
 		        }
 		    }
-		//end copy
 		
 		return maxAreaIdx;
 		
 	}
 	
-	
+	/**
+	 * Get the area of largest contour out of a list of contours
+	 * @param list of contours
+	 * @return area of largest contour
+	 */	
 	public static double getLargestArea(ArrayList<MatOfPoint> contours){
-		//return index of the largest contour
-		 double maxArea = -1;
-		 int maxAreaIdx = -1;
-		
-		//begin copy 
-		   MatOfPoint temp_contour = contours.get(0); //the largest is at the index 0 for starting point
-		   Mat largest_contour = contours.get(0);	   
-		   for (int i = 0; i < contours.size(); i++) {
-		        temp_contour = contours.get(i);
-		        double contourArea = Imgproc.contourArea(temp_contour);
-		        //compare this contour to the previous largest contour found
-		        if (contourArea > maxArea) {
-		            maxArea=contourArea;
-		            maxAreaIdx=i;
-		            largest_contour = temp_contour;
-		        }
-		    }
-		//end copy
-		
-		return maxArea;
-		
+		return Imgproc.contourArea(contours.get(getLargestContour(contours)));		
 	}
 	
+	/**
+	 * Get the index of the second largest contour out of a list of contours
+	 * @param list of contours
+	 * @return index of second largest contour
+	 */	
 	public static int getSecondLargestContour(ArrayList<MatOfPoint> contours){
 		//return index of the largest contour
 		 double maxArea = -1;
@@ -209,8 +218,6 @@ public class Functions {
 		
 	}
 	
-	//get contour with white in it??? for IR video to deal with the contour selection jumping to the hand
-
 	
 	/**
 	//problems: entire line gets turned that color you dont get a continuous thing
@@ -235,9 +242,6 @@ public class Functions {
 	
 	
 	 //the accel stuff saved for later
-	 
-	 
-
 	
 	public static void drawAccelLine(Mat dst, Point pt1, Point pt2){
 		//speed will be blue
@@ -247,10 +251,21 @@ public class Functions {
 	}
 	
 	*/
+	
+	/**
+	 * Get the previous point from a list of points
+	 * @param list of points
+	 * @return previous point
+	 */	
 	public static Point getPrevPt(ArrayList<Point> points){
 		Point prevPoint = points.get(points.size()-1);
 		return prevPoint;
 	}
+	
+	
+	/*
+	 * Below is some key feature matching stuff
+	 */
 	
 	
 	//was boolean, temporarily List<KeyPoint>
@@ -398,7 +413,8 @@ public class Functions {
 		
 	    //return tempKeyPointArrL;
 	}
-		
+	
+	
 	public static List<KeyPoint> getKeyPoints(Mat image, Mat dst){
 			FeatureDetector  fd = FeatureDetector.create(FeatureDetector.ORB); 
 		    final MatOfKeyPoint keyPoints = new MatOfKeyPoint();
