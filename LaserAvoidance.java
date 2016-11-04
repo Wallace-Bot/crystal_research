@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.Scanner;
 
-public class LaserAvoidanceTypeII {
+public class LaserAvoidance {
 
 	public static void main(String args[]){
 		//EDITED TO HAVE FILLED CONTOUR IN ORDER TO DEAL WITH THE SHAKY LINE FINDING from the first clip: eroded the filled contour
