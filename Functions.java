@@ -46,6 +46,8 @@ public class Functions {
 	 */
 	static double spf=.03333333; //for the butterfly only clips from superK
 	
+	//sampling one of two images tho is tha tpart accounted for
+	
 	public Functions() {
 	}
 	
@@ -56,7 +58,7 @@ public class Functions {
 	}
    
 	//get COM of one contour and draw it
-	public static void getCOMofOneContour(MatOfPoint contour, Mat dst){
+	public static Point getCOMofOneContour(MatOfPoint contour, Mat dst){
 
 			Moments mu = Imgproc.moments(contour, false);
 		//mass center
@@ -80,7 +82,7 @@ public class Functions {
      		Core.rectangle(dst, new Point(rect.x,rect.y), new Point(rect.x+rect.width,rect.y+rect.height), new Scalar(255,255,255), 3);
      		//System.out.println("testing");
      		
-     		//return p;
+     		return p;
 	}
 	public static Point COMnRec(ArrayList<MatOfPoint> contours, Mat dst){
 	   //finding mass center of contours
@@ -711,6 +713,14 @@ public class Functions {
 		return distance;
 	}
 	
+	/**
+	 * finds the pixels from the midpoint's y value to the top edge of the image
+	 * @param p1
+	 * @return distance between midpoint's y val and y=0
+	 */
+	public static double yDist(Point midpt){
+		return midpt.y;
+	}
 	
 	/**
 	 * find the midpoint of two points (for speed and accel tracking)
@@ -734,4 +744,149 @@ public class Functions {
 		double accel = (oldSpeed-newSpeed) / spf;
 		return accel;
 	}
+	
+	/**
+	 * find the angle of the orientation line from the horizontal
+	 * @param points
+	 * @return angle
+	 */
+	public static double getAngleTwoLines(Point[] endpts){
+		Point r1=new Point(150,300); //r1 and r2 are reference points
+		Point r2=new Point(200,300);
+		Point x1=endpts[0];
+		Point x2=endpts[1];
+		double denominator = Math.sqrt((r2.x-r1.x)*(r2.x-r1.x)+(r2.y-r1.y)*(r2.y-r1.y))*Math.sqrt((x2.x-x1.x)*(x2.x-x1.x)+(x2.y-x1.y)*(x2.y-x1.y));
+		double angle = Math.acos(((r2.x-r1.x)*(x2.x-x1.x)+(r2.y-r1.y)*(x2.y-x1.y))/denominator);
+		angle=angle*(180/Math.PI); //acos returns angle between 0 and pi
+		return angle;
+	}
+	
+	/**
+	 * find the angular speed
+	 * @param the old angle and the new angle
+	 * @return angular speed
+	 */
+	public static double getAngularSpeed(double angle1, double angle2){
+		double angSpeed = (angle1-angle2)/spf;
+		//System.out.println(angle2); //testing
+		return angSpeed;
+	}
+	
+	public static void laserAvoidanceCalibration(Point[] exVals, Mat img){
+
+		for (int i=0; i < exVals.length; i++){
+			
+			Core.putText(img, Integer.toString(i), exVals[i] , 3,1.0,new Scalar(255,255,255),2);
+
+		}
+		
+		
+	}
+	//BELOW RELATES TO DEALING WITH TWO DISTINCT PARTS OF ONE CONTOUR
+	public static Point[] connectTailHead(MatOfPoint largestContour, ArrayList<MatOfPoint> contours, int radius, int upperBoundArea, Mat dst){
+		Point pref = getCOMofOneContourV2(largestContour);
+		ArrayList<Point> coms = getCOMofContourList(contours);
+		double temp = 0;
+		int idxSecContour=0;
+		double contourArea;
+		outerloop:
+		for(int i=0; i<coms.size();i++){
+			temp=euDist(pref,coms.get(i));
+			//Core.circle(dst, coms.get(i), 100, new Scalar(255,255,255),3); //TESTING
+			contourArea = Imgproc.contourArea(contours.get(i));
+			//Core.putText(dst, String.valueOf(contourArea),coms.get(i) , 3,1.0,new Scalar(255,255,255),3); //TESTING
+			if(temp<radius && temp!=0 && contourArea<upperBoundArea){//to prevent it picking the dish
+				idxSecContour = i;
+				break outerloop;
+				}
+			else{
+				temp = 0;
+			}
+		}
+		
+		
+		Point[] refExVal = getExtremeValues(largestContour);
+		if(temp!=0){
+			Point[] secExVal = getExtremeValues(contours.get(idxSecContour));
+			Point[] unionExVal = new Point[4];
+			List<Point> union = new ArrayList<Point>();
+			for(int i=0;i<4;i++){
+				union.add(refExVal[i]);
+				union.add(secExVal[i]);
+			}
+			
+			Point start = union.get(0);
+			double xmax=start.x;
+			double xmin=start.x;
+			double ymax=start.y;
+			double ymin=start.y;
+			Point xmaxp= start;
+			Point ymaxp= start;
+			Point xminp= start;
+			Point yminp= start;
+
+			for(int i =1;i<union.size(); i++){
+				Point test=union.get(i);
+				if(test.x<xmin){
+					xmin=test.x;
+					xminp = test;
+				}
+				if(test.x>xmax){
+					xmax=test.x;
+					xmaxp = test;
+				
+				}
+				if (test.y<ymin){
+					ymin=test.y;
+					yminp = test;
+
+				}
+				if(test.y>ymax){
+					ymax=test.y;
+					ymaxp = test;
+
+				}
+			}
+		
+			unionExVal[0]=xminp;
+			unionExVal[1]=xmaxp;
+			unionExVal[2]=yminp;
+			unionExVal[3]=ymaxp;
+	
+			return unionExVal;
+		}
+		else{
+			return refExVal;
+		}
+		//Point[] getExtremeValues(MatOfPoint contour)
+		
+	}
+	
+	/**
+	 * finding com of a list of contours
+	 * @param contours
+	 * @return
+	 */
+	public static ArrayList<Point> getCOMofContourList(ArrayList<MatOfPoint> contours){
+
+		ArrayList<Point> coms = new ArrayList<Point>();
+		
+		for(int i=0;i<contours.size();i++){
+			coms.add(getCOMofOneContourV2(contours.get(i)));
+
+		}
+			return coms;
+		}
+	
+	/**
+	 * Just finding com of one contour and returning that
+	 * @param contour
+	 * @return com of the contour as a point
+	 */
+	public static Point getCOMofOneContourV2(MatOfPoint contour){
+		Moments mu = Imgproc.moments(contour, false);
+		Point p = new Point( mu.get_m10() / mu.get_m00() , mu.get_m01()/mu.get_m00() );
+ 		return p;
+}
+	
 }
